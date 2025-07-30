@@ -1,0 +1,252 @@
+/* ===== PALETA DE COLORES ===== */
+:root {
+  --primary-blue: #2563eb;
+  --secondary-blue: #3b82f6;
+  --white: #ffffff;
+  --light-gray: #f8fafc;
+  --medium-gray: #64748b;
+  --success-green: #10b981;
+  --danger-red: #ef4444;
+  --warning-yellow: #f59e0b;
+  --dark-text: #1e293b;
+  --light-text: #64748b;
+}
+
+/* ===== ESTILOS GLOBALES ===== */
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
+    'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue',
+    sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  background-color: var(--light-gray);
+  color: var(--dark-text);
+}
+
+.App {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+/* ===== COMPONENTES PRINCIPALES ===== */
+.navbar-custom {
+  background-color: var(--primary-blue) !important;
+  box-shadow: 0 2px 4px rgba(0,0,0,.1);
+}
+
+.navbar-custom .navbar-brand,
+.navbar-custom .nav-link {
+  color: var(--white) !important;
+}
+
+.navbar-custom .nav-link:hover {
+  color: var(--light-gray) !important;
+}
+
+.main-content {
+  flex: 1;
+  padding: 2rem 0;
+}
+
+/* ===== CARDS DE DENUNCIAS ===== */
+.denuncia-card {
+  background: var(--white);
+  border-radius: 8px;
+  box-shadow: 0 2px 4px rgba(0,0,0,.1);
+  margin-bottom: 1.5rem;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.denuncia-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 8px rgba(0,0,0,.15);
+}
+
+.denuncia-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1rem;
+}
+
+.categoria-badge {
+  background-color: var(--secondary-blue);
+  color: var(--white);
+  padding: 0.25rem 0.75rem;
+  border-radius: 20px;
+  font-size: 0.875rem;
+  font-weight: 500;
+}
+
+.likes-section {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.like-button {
+  background: none;
+  border: none;
+  color: var(--medium-gray);
+  cursor: pointer;
+  font-size: 1.2rem;
+  transition: color 0.2s ease;
+}
+
+.like-button:hover {
+  color: var(--danger-red);
+}
+
+.like-button.liked {
+  color: var(--danger-red);
+}
+
+.likes-count {
+  font-weight: 600;
+  color: var(--dark-text);
+}
+
+/* ===== FORMULARIOS ===== */
+.form-container {
+  background: var(--white);
+  padding: 2rem;
+  border-radius: 8px;
+  box-shadow: 0 2px 4px rgba(0,0,0,.1);
+}
+
+.btn-primary-custom {
+  background-color: var(--primary-blue);
+  border-color: var(--primary-blue);
+  padding: 0.75rem 1.5rem;
+  font-weight: 500;
+  transition: all 0.2s ease;
+}
+
+.btn-primary-custom:hover {
+  background-color: var(--secondary-blue);
+  border-color: var(--secondary-blue);
+  transform: translateY(-1px);
+}
+
+.btn-secondary-custom {
+  background-color: var(--medium-gray);
+  border-color: var(--medium-gray);
+  color: var(--white);
+}
+
+.btn-secondary-custom:hover {
+  background-color: var(--dark-text);
+  border-color: var(--dark-text);
+}
+
+/* ===== COMENTARIOS ===== */
+.comentarios-section {
+  margin-top: 1.5rem;
+  padding-top: 1.5rem;
+  border-top: 1px solid var(--light-gray);
+}
+
+.comentario-item {
+  background: var(--light-gray);
+  padding: 1rem;
+  border-radius: 6px;
+  margin-bottom: 1rem;
+}
+
+.comentario-autor {
+  font-weight: 600;
+  color: var(--primary-blue);
+  margin-bottom: 0.5rem;
+}
+
+.comentario-fecha {
+  font-size: 0.875rem;
+  color: var(--light-text);
+}
+
+/* ===== SIDEBAR ===== */
+.sidebar {
+  background: var(--white);
+  padding: 1.5rem;
+  border-radius: 8px;
+  box-shadow: 0 2px 4px rgba(0,0,0,.1);
+  margin-bottom: 1.5rem;
+}
+
+.sidebar-title {
+  color: var(--dark-text);
+  font-size: 1.125rem;
+  font-weight: 600;
+  margin-bottom: 1rem;
+}
+
+/* ===== RESPONSIVE ===== */
+@media (max-width: 768px) {
+  .main-content {
+    padding: 1rem 0;
+  }
+  
+  .denuncia-card {
+    margin-bottom: 1rem;
+  }
+  
+  .form-container {
+    padding: 1.5rem;
+  }
+  
+  .sidebar {
+    padding: 1rem;
+  }
+}
+
+/* ===== UTILIDADES ===== */
+.text-muted-custom {
+  color: var(--light-text) !important;
+}
+
+.bg-light-custom {
+  background-color: var(--light-gray) !important;
+}
+
+.border-custom {
+  border-color: var(--light-gray) !important;
+}
+
+.shadow-custom {
+  box-shadow: 0 2px 4px rgba(0,0,0,.1) !important;
+}
+
+/* ===== ANIMACIONES ===== */
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.fade-in {
+  animation: fadeIn 0.5s ease-out;
+}
+
+/* ===== ESTADOS DE CARGA ===== */
+.loading-spinner {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  height: 200px;
+}
+
+.loading-spinner .spinner-border {
+  color: var(--primary-blue);
+} 
