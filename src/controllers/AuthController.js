@@ -1,4 +1,5 @@
 import { autenticarUsuario } from '../models/demoData.js';
+import { Usuario } from '../models/Usuario.js';
 
 class AuthController {
   constructor() {
@@ -77,7 +78,9 @@ class AuthController {
       const storedAuth = localStorage.getItem('isAuthenticated');
       
       if (storedUser && storedAuth === 'true') {
-        this.currentUser = JSON.parse(storedUser);
+        const userData = JSON.parse(storedUser);
+        // Reconstruct the Usuario instance from the parsed data
+        this.currentUser = new Usuario(userData);
         this.isAuthenticated = true;
         this.notifyAuthListeners();
         return true;
