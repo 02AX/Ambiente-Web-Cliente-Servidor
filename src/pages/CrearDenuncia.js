@@ -60,31 +60,24 @@ const CrearDenuncia = () => {
     }
 
     setLoading(true);
-    
-    // Simular delay de creación
-    setTimeout(() => {
-      const result = denunciaController.crearDenuncia(formData);
-      
-      if (result.success) {
-        setSuccess(true);
-        setTimeout(() => {
-          navigate(`/denuncias/${result.denuncia.id}`);
-        }, 2000);
+    const result = await denunciaController.crearDenuncia(formData);
+    if (result.success) {
+      setSuccess(true);
+      setTimeout(() => { navigate(`/denuncias/${result.denuncia.id}`); }, 1200);
+    } else {
+      if (result.errores) {
+        const formErrors = {};
+        result.errores.forEach(error => {
+          if (error.includes('título')) formErrors.titulo = error;
+          if (error.includes('descripción')) formErrors.descripcion = error;
+          if (error.includes('categoría')) formErrors.categoria = error;
+        });
+        setErrors(formErrors);
       } else {
-        if (result.errores) {
-          const formErrors = {};
-          result.errores.forEach(error => {
-            if (error.includes('título')) formErrors.titulo = error;
-            if (error.includes('descripción')) formErrors.descripcion = error;
-            if (error.includes('categoría')) formErrors.categoria = error;
-          });
-          setErrors(formErrors);
-        } else {
-          setErrors({ general: result.message });
-        }
-        setLoading(false);
+        setErrors({ general: result.message });
       }
-    }, 1000);
+      setLoading(false);
+    }
   };
 
   const getCategoriaInfo = (categoria) => {

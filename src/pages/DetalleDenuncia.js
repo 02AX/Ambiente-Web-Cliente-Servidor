@@ -24,24 +24,18 @@ const DetalleDenuncia = () => {
     cargarDenunciaYComentarios();
   }, [id]);
 
-  const cargarDenunciaYComentarios = () => {
+  const cargarDenunciaYComentarios = async () => {
     setLoading(true);
-    
-    // Simular carga desde API
-    setTimeout(() => {
-      const denunciaEncontrada = denunciaController.getDenunciaById(id);
-      
-      if (denunciaEncontrada) {
-        setDenuncia(denunciaEncontrada);
-        const comentariosDenuncia = denunciaController.getComentariosByDenuncia(id);
-        setComentarios(comentariosDenuncia);
-        setError('');
-      } else {
-        setError('Denuncia no encontrada');
-      }
-      
-      setLoading(false);
-    }, 500);
+    const denunciaEncontrada = await denunciaController.getDenunciaById(id);
+    if (denunciaEncontrada) {
+      setDenuncia(denunciaEncontrada);
+      const comentariosDenuncia = await denunciaController.getComentariosByDenuncia(id);
+      setComentarios(comentariosDenuncia);
+      setError('');
+    } else {
+      setError('Denuncia no encontrada');
+    }
+    setLoading(false);
   };
 
   const handleComentarioChange = (e) => {
@@ -49,7 +43,7 @@ const DetalleDenuncia = () => {
     if (errorComentario) setErrorComentario('');
   };
 
-  const handleSubmitComentario = (e) => {
+  const handleSubmitComentario = async (e) => {
     e.preventDefault();
     
     if (!authController.isUserAuthenticated()) {
@@ -64,20 +58,15 @@ const DetalleDenuncia = () => {
     }
 
     setEnviandoComentario(true);
-
-    setTimeout(() => {
-      const result = denunciaController.agregarComentario(id, nuevoComentario);
-      
-      if (result.success) {
-        setNuevoComentario('');
-        setMostrarFormComentario(false);
-        cargarDenunciaYComentarios(); // Recargar para mostrar el nuevo comentario
-      } else {
-        setErrorComentario(result.message);
-      }
-      
-      setEnviandoComentario(false);
-    }, 1000);
+    const result = await denunciaController.agregarComentario(id, nuevoComentario);
+    if (result.success) {
+      setNuevoComentario('');
+      setMostrarFormComentario(false);
+      await cargarDenunciaYComentarios();
+    } else {
+      setErrorComentario(result.message);
+    }
+    setEnviandoComentario(false);
   };
 
   const handleUpdate = () => {
@@ -153,11 +142,9 @@ const DetalleDenuncia = () => {
                   <div className="likes-section">
                     <button
                       className={`like-button ${denunciaController.hasUserLikedDenuncia(denuncia.id) ? 'liked' : ''}`}
-                      onClick={() => {
-                        const result = denunciaController.toggleLikeDenuncia(denuncia.id);
-                        if (result.success) {
-                          handleUpdate();
-                        }
+                      onClick={async () => {
+                        const result = await denunciaController.toggleLikeDenuncia(denuncia.id);
+                        if (result.success) { handleUpdate(); }
                       }}
                       disabled={!authController.isUserAuthenticated()}
                     >

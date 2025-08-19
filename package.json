@@ -9,17 +9,23 @@
     "test": "react-scripts test",
     "eject": "react-scripts eject"
   },
-  "keywords": ["react", "denuncias", "ciudadania", "bootstrap"],
+  "keywords": [
+    "react",
+    "denuncias",
+    "ciudadania",
+    "bootstrap"
+  ],
   "author": "",
   "license": "ISC",
   "dependencies": {
-    "react": "^18.2.0",
-    "react-dom": "^18.2.0",
-    "react-scripts": "5.0.1",
-    "react-router-dom": "^6.8.0",
     "bootstrap": "^5.3.0",
+    "bootstrap-icons": "^1.10.3",
+    "firebase": "^12.1.0",
+    "react": "^18.2.0",
     "react-bootstrap": "^2.7.0",
-    "bootstrap-icons": "^1.10.3"
+    "react-dom": "^18.2.0",
+    "react-router-dom": "^6.8.0",
+    "react-scripts": "5.0.1"
   },
   "browserslist": {
     "production": [
@@ -33,4 +39,4 @@
       "last 1 safari version"
     ]
   }
-} 
+}

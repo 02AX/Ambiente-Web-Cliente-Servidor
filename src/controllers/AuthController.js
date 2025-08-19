@@ -1,86 +1,106 @@
-import { autenticarUsuario } from '../models/demoData.js';
-import { Usuario } from '../models/Usuario.js';
+import { auth, db } from '../firebase/firebaseConfig.js';
+import {
+  createUserWithEmailAndPassword,
+  signInWithEmailAndPassword,
+  signOut,
+  onAuthStateChanged,
+} from 'firebase/auth';
+import { doc, setDoc } from 'firebase/firestore';
 
 class AuthController {
   constructor() {
     this.currentUser = null;
     this.isAuthenticated = false;
     this.authListeners = [];
-  }
 
-  // Método para iniciar sesión
-  login(username, password) {
-    try {
-      const user = autenticarUsuario(username, password);
-      
+    onAuthStateChanged(auth, (user) => {
       if (user) {
         this.currentUser = user;
         this.isAuthenticated = true;
-        
-        // Guardar en localStorage para persistencia
-        localStorage.setItem('currentUser', JSON.stringify(user));
+        localStorage.setItem('currentUser', JSON.stringify(this._serializeUser(user)));
         localStorage.setItem('isAuthenticated', 'true');
-        
-        // Notificar a los listeners
-        this.notifyAuthListeners();
-        
-        return {
-          success: true,
-          message: 'Inicio de sesión exitoso',
-          user: user
-        };
       } else {
-        return {
-          success: false,
-          message: 'Usuario o contraseña incorrectos'
-        };
+        this.currentUser = null;
+        this.isAuthenticated = false;
+        localStorage.removeItem('currentUser');
+        localStorage.removeItem('isAuthenticated');
       }
-    } catch (error) {
-      return {
-        success: false,
-        message: 'Error en el inicio de sesión'
-      };
-    }
+      this.notifyAuthListeners();
+    });
   }
 
-  // Método para cerrar sesión
-  logout() {
-    this.currentUser = null;
-    this.isAuthenticated = false;
-    
-    // Remover de localStorage
-    localStorage.removeItem('currentUser');
-    localStorage.removeItem('isAuthenticated');
-    
-    // Notificar a los listeners
-    this.notifyAuthListeners();
-    
+  _serializeUser(user){
     return {
-      success: true,
-      message: 'Sesión cerrada exitosamente'
+      uid: user.uid,
+      email: user.email,
+      displayName: user.displayName || null,
     };
   }
 
-  // Método para obtener el usuario actual
-  getCurrentUser() {
-    return this.currentUser;
+  async register(email, password, username) {
+    try {
+      const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+      const user = userCredential.user;
+
+      await setDoc(doc(db, 'users', user.uid), {
+        email,
+        username,
+        createdAt: new Date()
+      });
+
+      return { success: true, user: this._serializeUser(user) };
+    } catch (error) {
+      return { success: false, message: error.message };
+    }
   }
 
-  // Método para verificar si el usuario está autenticado
+  async login(email, password) {
+    try {
+      const userCredential = await signInWithEmailAndPassword(auth, email, password);
+      this.currentUser = userCredential.user;
+      this.isAuthenticated = true;
+      localStorage.setItem('currentUser', JSON.stringify(this._serializeUser(this.currentUser)));
+      localStorage.setItem('isAuthenticated', 'true');
+      this.notifyAuthListeners();
+
+      return{
+        success: true,
+        message: 'El inicio de sesión fue exitoso',
+        user: this._serializeUser(this.currentUser),
+      };
+    } catch (error) {
+      return { success: false, message: error.message };
+    }
+  }
+
+  async logout() {
+    try {
+      await signOut(auth);
+      this.currentUser = null;
+      this.isAuthenticated = false;
+      localStorage.removeItem('currentUser');
+      localStorage.removeItem('isAuthenticated');
+      this.notifyAuthListeners();
+      return { success: true, message: 'La sesión fue cerrada correctamente' };
+    } catch (error) {
+      return { success: false, message: error.message };
+    }
+  }
+
+  getCurrentUser() {
+    return this.currentUser ? this._serializeUser(this.currentUser) : null;
+  }
+
   isUserAuthenticated() {
     return this.isAuthenticated;
   }
 
-  // Método para restaurar sesión desde localStorage
   restoreSession() {
     try {
       const storedUser = localStorage.getItem('currentUser');
       const storedAuth = localStorage.getItem('isAuthenticated');
-      
       if (storedUser && storedAuth === 'true') {
-        const userData = JSON.parse(storedUser);
-        // Reconstruct the Usuario instance from the parsed data
-        this.currentUser = new Usuario(userData);
+        this.currentUser = JSON.parse(storedUser);
         this.isAuthenticated = true;
         this.notifyAuthListeners();
         return true;
@@ -92,31 +112,25 @@ class AuthController {
     }
   }
 
-  // Método para agregar listeners de cambios de autenticación
   addAuthListener(listener) {
     this.authListeners.push(listener);
   }
 
-  // Método para remover listeners
   removeAuthListener(listener) {
     this.authListeners = this.authListeners.filter(l => l !== listener);
   }
 
-  // Método para notificar cambios de autenticación
   notifyAuthListeners() {
     this.authListeners.forEach(listener => {
       listener({
         isAuthenticated: this.isAuthenticated,
-        user: this.currentUser
+        user: this.getCurrentUser()
       });
     });
   }
 
-  // Método para verificar permisos
   hasPermission(permission) {
     if (!this.isAuthenticated) return false;
-    
-    // Por ahora todos los usuarios autenticados tienen los mismos permisos
     const permissions = [
       'create_denuncia',
       'comment',
@@ -124,100 +138,9 @@ class AuthController {
       'view_profile',
       'edit_profile'
     ];
-    
     return permissions.includes(permission);
-  }
-
-  // Método para obtener estadísticas del usuario
-  getUserStats() {
-    if (!this.isAuthenticated || !this.currentUser) {
-      return null;
-    }
-    
-    return this.currentUser.getEstadisticas();
-  }
-
-  // Método para actualizar configuraciones del usuario
-  updateUserSettings(newSettings) {
-    if (!this.isAuthenticated || !this.currentUser) {
-      return {
-        success: false,
-        message: 'Usuario no autenticado'
-      };
-    }
-    
-    try {
-      this.currentUser.actualizarConfiguraciones(newSettings);
-      
-      // Actualizar en localStorage
-      localStorage.setItem('currentUser', JSON.stringify(this.currentUser));
-      
-      return {
-        success: true,
-        message: 'Configuraciones actualizadas exitosamente'
-      };
-    } catch (error) {
-      return {
-        success: false,
-        message: 'Error al actualizar configuraciones'
-      };
-    }
-  }
-
-  // Método para verificar si el usuario puede realizar una acción
-  canPerformAction(action) {
-    if (!this.isAuthenticated) return false;
-    
-    const allowedActions = {
-      'create_denuncia': true,
-      'like_denuncia': true,
-      'comment': true,
-      'view_denuncias': true,
-      'view_ranking': true,
-      'view_community': true,
-      'view_profile': true,
-      'edit_profile': true
-    };
-    
-    return allowedActions[action] || false;
-  }
-
-  // Método para obtener el nombre mostrable del usuario
-  getDisplayName() {
-    if (!this.isAuthenticated || !this.currentUser) {
-      return 'Usuario Anónimo';
-    }
-    
-    return this.currentUser.getDisplayName();
-  }
-
-  // Método para validar datos de registro (para futuras implementaciones)
-  validateRegistrationData(userData) {
-    const errors = [];
-    
-    if (!userData.username || userData.username.length < 3) {
-      errors.push('El nombre de usuario debe tener al menos 3 caracteres');
-    }
-    
-    if (!userData.email || !this.isValidEmail(userData.email)) {
-      errors.push('Email inválido');
-    }
-    
-    if (!userData.password || userData.password.length < 6) {
-      errors.push('La contraseña debe tener al menos 6 caracteres');
-    }
-    
-    return errors;
-  }
-
-  // Método para validar email
-  isValidEmail(email) {
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    return emailRegex.test(email);
   }
 }
 
-// Crear instancia única del controlador (Singleton)
 const authController = new AuthController();
-
-export default authController; 
+export default authController;

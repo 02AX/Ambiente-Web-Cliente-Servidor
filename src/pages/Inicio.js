@@ -3,6 +3,7 @@ import { Container, Row, Col, Card, Button, Alert } from 'react-bootstrap';
 import { Link } from 'react-router-dom';
 import DenunciaCard from '../components/DenunciaCard.js';
 import denunciaController from '../controllers/DenunciaController.js';
+// TODO: Replace with Firestore-backed news if needed
 import { noticiasDestacadas } from '../models/demoData.js';
 import { formatearTiempoRelativo } from '../utils/dateUtils.js';
 
@@ -12,10 +13,21 @@ const Inicio = () => {
   const [estadisticas, setEstadisticas] = useState({});
 
   useEffect(() => {
-    // Cargar datos iniciales
-    setDenunciasRecientes(denunciaController.getDenunciasRecientes(3));
-    setDenunciasPopulares(denunciaController.getDenunciasPopulares(3));
-    setEstadisticas(denunciaController.getEstadisticas());
+    // Cargar datos iniciales (async)
+    (async () => {
+      try {
+        const recientes = await denunciaController.getDenunciasRecientes(3);
+        const populares = await denunciaController.getDenunciasPopulares(3);
+        const stats = await denunciaController.getEstadisticas();
+        setDenunciasRecientes(Array.isArray(recientes) ? recientes : []);
+        setDenunciasPopulares(Array.isArray(populares) ? populares : []);
+        setEstadisticas(stats || {});
+      } catch (e) {
+        setDenunciasRecientes([]);
+        setDenunciasPopulares([]);
+        setEstadisticas({});
+      }
+    })();
   }, []);
 
   return (

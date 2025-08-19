@@ -2,12 +2,12 @@ import React, { useState } from 'react';
 import { Container, Row, Col, Card, Form, Button, Alert } from 'react-bootstrap';
 import { useNavigate, Link } from 'react-router-dom';
 import authController from '../controllers/AuthController.js';
-import { USUARIO_DEMO } from '../models/demoData.js';
+// import { USUARIO_DEMO } from '../models/demoData.js';
 
 const Login = () => {
   const navigate = useNavigate();
   const [formData, setFormData] = useState({
-    username: '',
+    email: '',
     password: ''
   });
   const [loading, setLoading] = useState(false);
@@ -22,33 +22,22 @@ const Login = () => {
     if (error) setError('');
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    
     if (loading) return;
-    
     setLoading(true);
     setError('');
-
-    // Simular delay de autenticación
-    setTimeout(() => {
-      const result = authController.login(formData.username, formData.password);
-      
-      if (result.success) {
-        navigate('/');
-      } else {
-        setError(result.message);
-      }
-      
-      setLoading(false);
-    }, 1000);
+    const result = await authController.login(formData.email, formData.password);
+    if (result.success) {
+      navigate('/');
+    } else {
+      setError(result.message || 'No se pudo iniciar sesión');
+    }
+    setLoading(false);
   };
 
   const handleDemoLogin = () => {
-    setFormData({
-      username: USUARIO_DEMO.username,
-      password: USUARIO_DEMO.password
-    });
+    setFormData({ email: '', password: '' });
   };
 
   return (
@@ -68,23 +57,19 @@ const Login = () => {
                   </p>
                 </div>
 
-                {/* Credenciales Demo */}
+                {/* Info */}
                 <Alert variant="info" className="mb-4">
                   <div className="d-flex align-items-start">
                     <i className="bi bi-info-circle-fill me-2 mt-1"></i>
                     <div>
-                      <h6 className="alert-heading fw-bold mb-2">Cuenta Demo</h6>
-                      <p className="mb-2 small">
-                        <strong>Usuario:</strong> {USUARIO_DEMO.username}<br />
-                        <strong>Contraseña:</strong> {USUARIO_DEMO.password}
-                      </p>
+                      <h6 className="alert-heading fw-bold mb-2">Autenticación</h6>
+                      <p className="mb-2 small">Usa tu email y contraseña para ingresar.</p>
                       <Button 
                         variant="outline-info" 
                         size="sm" 
                         onClick={handleDemoLogin}
                       >
-                        <i className="bi bi-lightning me-1"></i>
-                        Usar credenciales demo
+                        Limpiar formulario
                       </Button>
                     </div>
                   </div>
@@ -100,15 +85,15 @@ const Login = () => {
 
                   <Form.Group className="mb-3">
                     <Form.Label>
-                      <i className="bi bi-person me-2"></i>
-                      Usuario
+                      <i className="bi bi-envelope me-2"></i>
+                      Email
                     </Form.Label>
                     <Form.Control
-                      type="text"
-                      name="username"
-                      value={formData.username}
+                      type="email"
+                      name="email"
+                      value={formData.email}
                       onChange={handleChange}
-                      placeholder="Ingresa tu usuario"
+                      placeholder="tu@correo.com"
                       required
                       disabled={loading}
                     />
@@ -150,13 +135,11 @@ const Login = () => {
                 </Form>
 
                 <div className="text-center">
-                  <p className="text-muted small mb-2">
-                    ¿No tienes cuenta?
-                  </p>
-                  <Alert variant="warning" className="small mb-0">
-                    <i className="bi bi-construction me-2"></i>
-                    El registro estará disponible cuando se implemente Firebase Authentication
-                  </Alert>
+                  <p className="text-muted small mb-2">¿No tienes cuenta?</p>
+                  <Link to="/register" className="btn btn-outline-primary btn-sm">
+                    <i className="bi bi-person-plus me-1"></i>
+                    Crear Cuenta
+                  </Link>
                 </div>
               </Card.Body>
             </Card>

@@ -74,7 +74,7 @@ const Navigation = ({ isAuthenticated, currentUser }) => {
                   title={
                     <span>
                       <i className="bi bi-person-circle me-1"></i>
-                      {currentUser?.getDisplayName() || 'Usuario'}
+                      {currentUser?.displayName || currentUser?.email || 'Usuario'}
                     </span>
                   } 
                   id="user-dropdown"
@@ -94,12 +94,20 @@ const Navigation = ({ isAuthenticated, currentUser }) => {
                 </NavDropdown>
               </>
             ) : (
-              <Nav.Link as={Link} to="/login" onClick={handleNavClick}>
-                <Button variant="outline-light" size="sm">
-                  <i className="bi bi-box-arrow-in-right me-1"></i>
-                  Iniciar Sesión
-                </Button>
-              </Nav.Link>
+              <>
+                <Nav.Link as={Link} to="/login" onClick={handleNavClick}>
+                  <Button variant="outline-light" size="sm" className="me-2">
+                    <i className="bi bi-box-arrow-in-right me-1"></i>
+                    Iniciar Sesión
+                  </Button>
+                </Nav.Link>
+                <Nav.Link as={Link} to="/register" onClick={handleNavClick}>
+                  <Button variant="warning" size="sm">
+                    <i className="bi bi-person-plus me-1"></i>
+                    Crear Cuenta
+                  </Button>
+                </Nav.Link>
+              </>
             )}
           </Nav>
         </Navbar.Collapse>

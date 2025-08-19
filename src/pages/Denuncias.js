@@ -22,13 +22,16 @@ const Denuncias = () => {
     aplicarFiltros();
   }, [denuncias, categoriaSeleccionada, busqueda]);
 
-  const cargarDenuncias = () => {
+  const cargarDenuncias = async () => {
     setLoading(true);
-    setTimeout(() => {
-      const denunciasOrdenadas = denunciaController.getDenunciasOrdenadas(ordenamiento);
+    try {
+      const denunciasOrdenadas = await denunciaController.getDenunciasOrdenadas(ordenamiento);
       setDenuncias(denunciasOrdenadas);
+    } catch (e) {
+      setDenuncias([]);
+    } finally {
       setLoading(false);
-    }, 300);
+    }
   };
 
   const aplicarFiltros = () => {

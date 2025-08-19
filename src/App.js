@@ -24,6 +24,8 @@ import PerfilUsuario from './pages/PerfilUsuario.js';
 import Comunidad from './pages/Comunidad.js';
 import Soporte from './pages/Soporte.js';
 import Login from './pages/Login.js';
+import Register from './pages/Register.js';
+import DevSeed from './pages/DevSeed.js';
 
 function App() {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
@@ -89,6 +91,10 @@ function App() {
               <Route path="/comunidad" element={<Comunidad />} />
               <Route path="/soporte" element={<Soporte />} />
               <Route path="/login" element={<Login />} />
+              <Route path="/register" element={<Register />} />
+              {process.env.NODE_ENV !== 'production' && (
+                <Route path="/dev/seed" element={<DevSeed />} />
+              )}
             </Routes>
           </Container>
         </main>

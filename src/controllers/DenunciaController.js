@@ -1,345 +1,253 @@
 import { 
-  denunciasDemo, 
-  comentariosDemo, 
-  obtenerDenunciasPorCategoria, 
-  obtenerDenunciasOrdenadas,
-  obtenerComentariosPorDenuncia,
-  obtenerDenunciaPorId
-} from '../models/demoData.js';
+  collection,
+  getDocs,
+  query,
+  where,
+  orderBy,
+  limit,
+  addDoc,
+  doc,
+  updateDoc,
+  getDoc,
+  setDoc
+} from 'firebase/firestore';
+import { auth, db } from '../firebase/firebaseConfig.js';
 import { Denuncia, CATEGORIAS } from '../models/Denuncia.js';
 import { Comentario } from '../models/Comentario.js';
-import authController from './AuthController.js';
 
 class DenunciaController {
   constructor() {
-    this.denuncias = [...denunciasDemo];
-    this.comentarios = [...comentariosDemo];
     this.listeners = [];
   }
 
-  // Método para obtener todas las denuncias
-  getAllDenuncias() {
-    return this.denuncias;
+  async getAllDenuncias() {
+    const denunciasCol = collection(db, 'denuncias');
+    const snapshot = await getDocs(denunciasCol);
+    return snapshot.docs.map(doc => ({ id: doc.id, ...this._convertTimestamps(doc.data()) }));
   }
 
-  // Método para obtener denuncias filtradas por categoría
-  getDenunciasByCategoria(categoria) {
-    return obtenerDenunciasPorCategoria(categoria);
+  async getDenunciasByCategoria(categoria) {
+    const denunciasCol = collection(db, 'denuncias');
+    const q = query(denunciasCol, where('categoria', '==', categoria));
+    const snapshot = await getDocs(q);
+    return snapshot.docs.map(doc => ({ id: doc.id, ...this._convertTimestamps(doc.data()) }));
   }
 
-  // Método para obtener denuncias ordenadas
-  getDenunciasOrdenadas(criterio = 'likes') {
-    return obtenerDenunciasOrdenadas(criterio);
+  async getDenunciasOrdenadas(criterio = 'likes') {
+    const denunciasCol = collection(db, 'denuncias');
+    const q = query(denunciasCol, orderBy(criterio, 'desc'));
+    const snapshot = await getDocs(q);
+    return snapshot.docs.map(doc => ({ id: doc.id, ...this._convertTimestamps(doc.data()) }));
   }
 
-  // Método para obtener una denuncia por ID
-  getDenunciaById(id) {
-    return obtenerDenunciaPorId(id);
+  async getDenunciaById(id) {
+    const docRef = doc(db, 'denuncias', id);
+    const docSnap = await getDoc(docRef);
+    if (!docSnap.exists()) return null;
+    return { id: docSnap.id, ...this._convertTimestamps(docSnap.data()) };
   }
 
-  // Método para crear una nueva denuncia
-  crearDenuncia(datosForm) {
+  async crearDenuncia(datosForm) {
     try {
-      // Verificar autenticación
-      if (!authController.isUserAuthenticated()) {
-        return {
-          success: false,
-          message: 'Debe estar autenticado para crear una denuncia'
-        };
+      const user = auth.currentUser;
+      if (!user) {
+        return { success: false, message: 'Se debe de estar autenticado para crear una denuncia'};
       }
 
-      // Generar ID único
-      const id = this.generateId();
-      
-      // Crear nueva denuncia
       const nuevaDenuncia = new Denuncia({
-        id,
         titulo: datosForm.titulo,
         descripcion: datosForm.descripcion,
         categoria: datosForm.categoria,
         fechaCreacion: new Date(),
-        usuarioId: authController.getCurrentUser().id
+        usuarioId: user.uid,
+        likes: 0,
+        comentarios: []
       });
 
-      // Validar la denuncia
       const errores = nuevaDenuncia.validar();
       if (errores.length > 0) {
-        return {
-          success: false,
-          message: 'Errores de validación',
-          errores: errores
-        };
+        return { success: false, message: 'Errores de validación', errores };
       }
 
-      // Agregar a la lista de denuncias
-      this.denuncias.unshift(nuevaDenuncia);
-      
-      // Agregar a las denuncias creadas del usuario
-      const currentUser = authController.getCurrentUser();
-      currentUser.agregarDenunciaCreada(id);
-      
-      // Notificar listeners
-      this.notifyListeners();
-      
-      return {
-        success: true,
-        message: 'Denuncia creada exitosamente',
-        denuncia: nuevaDenuncia
-      };
-    } catch (error) {
-      return {
-        success: false,
-        message: 'Error al crear la denuncia'
-      };
-    }
-  }
-
-  // Método para dar like a una denuncia
-  toggleLikeDenuncia(denunciaId) {
-    try {
-      // Verificar autenticación
-      if (!authController.isUserAuthenticated()) {
-        return {
-          success: false,
-          message: 'Debe estar autenticado para dar like'
-        };
-      }
-
-      const denuncia = this.denuncias.find(d => d.id === denunciaId);
-      if (!denuncia) {
-        return {
-          success: false,
-          message: 'Denuncia no encontrada'
-        };
-      }
-
-      const currentUser = authController.getCurrentUser();
-      const hasLiked = currentUser.hasLikedDenuncia(denunciaId);
-
-      if (hasLiked) {
-        // Quitar like
-        denuncia.quitarLike();
-        currentUser.toggleLikeDenuncia(denunciaId);
-        
-        return {
-          success: true,
-          message: 'Like removido',
-          liked: false,
-          likes: denuncia.likes
-        };
-      } else {
-        // Agregar like
-        denuncia.agregarLike();
-        currentUser.toggleLikeDenuncia(denunciaId);
-        
-        return {
-          success: true,
-          message: 'Like agregado',
-          liked: true,
-          likes: denuncia.likes
-        };
-      }
-    } catch (error) {
-      return {
-        success: false,
-        message: 'Error al procesar el like'
-      };
-    }
-  }
-
-  // Método para agregar comentario a una denuncia
-  agregarComentario(denunciaId, contenido) {
-    try {
-      // Verificar autenticación
-      if (!authController.isUserAuthenticated()) {
-        return {
-          success: false,
-          message: 'Debe estar autenticado para comentar'
-        };
-      }
-
-      const denuncia = this.denuncias.find(d => d.id === denunciaId);
-      if (!denuncia) {
-        return {
-          success: false,
-          message: 'Denuncia no encontrada'
-        };
-      }
-
-      // Generar ID único para el comentario
-      const comentarioId = this.generateId();
-      
-      // Crear nuevo comentario
-      const nuevoComentario = new Comentario({
-        id: comentarioId,
-        denunciaId: denunciaId,
-        usuarioId: authController.getCurrentUser().id,
-        contenido: contenido,
-        fechaCreacion: new Date()
+      const denunciasCol = collection(db, 'denuncias');
+      const docRef = await addDoc(denunciasCol, {
+        titulo: nuevaDenuncia.titulo,
+        descripcion: nuevaDenuncia.descripcion,
+        categoria: nuevaDenuncia.categoria,
+        fechaCreacion: nuevaDenuncia.fechaCreacion,
+        usuarioId: nuevaDenuncia.usuarioId,
+        likes: 0,
+        usuariosQueDieronLike: [],
+        comentarios: []
       });
 
-      // Validar comentario
-      const errores = nuevoComentario.validar();
-      if (errores.length > 0) {
-        return {
-          success: false,
-          message: 'Error de validación',
-          errores: errores
-        };
-      }
-
-      // Agregar comentario a la lista
-      this.comentarios.push(nuevoComentario);
-      
-      // Agregar comentario a la denuncia
-      denuncia.agregarComentario(comentarioId);
-      
-      // Agregar al usuario
-      const currentUser = authController.getCurrentUser();
-      currentUser.agregarComentario(comentarioId);
-      
-      // Notificar listeners
       this.notifyListeners();
-      
-      return {
-        success: true,
-        message: 'Comentario agregado exitosamente',
-        comentario: nuevoComentario
-      };
+      return { success: true, message: 'Denuncia creada exitosamente', denuncia: { ...nuevaDenuncia, id: docRef.id } };
     } catch (error) {
-      return {
-        success: false,
-        message: 'Error al agregar comentario'
-      };
+      return { success: false, message: 'Error al crear la denuncia' };
     }
   }
 
-  // Método para obtener comentarios de una denuncia
-  getComentariosByDenuncia(denunciaId) {
-    return obtenerComentariosPorDenuncia(denunciaId);
+  async toggleLikeDenuncia(denunciaId) {
+    try {
+      const user = auth.currentUser;
+      if (!user) {
+        return { success: false, message: 'Se debe de estar autenticado para dar like '};
+      }
+
+      const docRef = doc(db, 'denuncias', denunciaId);
+      const docSnap = await getDoc(docRef);
+      if (!docSnap.exists()) return { success: false, message: 'Denuncia no encontrada' };
+
+      const denunciaData = docSnap.data();
+      let usuariosQueDieronLike = denunciaData.usuariosQueDieronLike || [];
+      let likes = denunciaData.likes || 0;
+      const hasLiked = usuariosQueDieronLike.includes(user.uid);
+
+      if (hasLiked) {
+        usuariosQueDieronLike = usuariosQueDieronLike.filter(uid => uid !== user.uid);
+        likes = Math.max(0, likes - 1);
+      } else {
+        usuariosQueDieronLike.push(user.uid);
+        likes += 1;
+      }
+
+      await updateDoc(docRef, { usuariosQueDieronLike, likes });
+      this.notifyListeners();
+      return { success: true, message: hasLiked ? 'Like eliminado: ' : 'Like agregado correctamente', liked: !hasLiked, likes };
+    } catch (error) {
+      return { success: false, message: 'Error al procesar el like' };
+    }
   }
 
-  // Método para obtener categorías disponibles
-  getCategorias() {
-    return CATEGORIAS;
+  async agregarComentario(denunciaId, contenido) {
+    try {
+      const user = auth.currentUser;
+      if (!user) {
+        return { success: false, message: 'Debe estar autenticado para comentar' };
+      }
+
+      const docRef = doc(db, 'denuncias', denunciaId);
+      const docSnap = await getDoc(docRef);
+      if (!docSnap.exists()) return { success: false, message: 'La denuncia no fue encontrada'};
+
+      const nuevaFecha = new Date();
+      const nuevoComentario = new Comentario({
+        contenido,
+        fechaCreacion: nuevaFecha,
+        usuarioId: user.uid,
+        denunciaId
+      });
+
+      const errores = nuevoComentario.validar();
+      if (errores.length > 0) {
+        return { success: false, message: 'Error de validación', errores };
+      }
+
+      const comentariosCol = collection(db, 'comentarios');
+      const comentarioDocRef = await addDoc(comentariosCol, {
+        contenido,
+        fechaCreacion: nuevaFecha,
+        usuarioId: user.uid,
+        denunciaId
+      });
+
+      const denunciaData = docSnap.data();
+      const comentariosIds = denunciaData.comentarios || [];
+      comentariosIds.push(comentarioDocRef.id);
+      await updateDoc(docRef, { comentarios: comentariosIds });
+
+      this.notifyListeners();
+      return { success: true, message: 'Comentario agregado exitosamente', comentario: { ...nuevoComentario, id: comentarioDocRef.id } };
+    } catch (error) {
+      return { success: false, message: 'Error al agregar comentario' };
+    }
   }
 
-  // Método para obtener estadísticas generales
-  getEstadisticas() {
+  async getComentariosByDenuncia(denunciaId) {
+    const comentariosCol = collection(db, 'comentarios');
+    const q = query(comentariosCol, where('denunciaId', '==', denunciaId), orderBy('fechaCreacion', 'asc'));
+    const snapshot = await getDocs(q);
+    return snapshot.docs.map(doc => ({ id: doc.id, ...this._convertTimestamps(doc.data()) }));
+  }
+
+  getCategorias() { return CATEGORIAS; }
+
+  async getEstadisticas() {
+    const denuncias = await this.getAllDenuncias();
+    const comentariosCol = collection(db, 'comentarios');
+    const comentariosSnapshot = await getDocs(comentariosCol);
     const stats = {
-      totalDenuncias: this.denuncias.length,
-      totalComentarios: this.comentarios.length,
-      totalLikes: this.denuncias.reduce((total, d) => total + d.likes, 0),
+      totalDenuncias: denuncias.length,
+      totalComentarios: comentariosSnapshot.size,
+      totalLikes: denuncias.reduce((total, d) => total + (d.likes || 0), 0),
       categorias: {}
     };
-
-    // Contar denuncias por categoría
     CATEGORIAS.forEach(categoria => {
-      stats.categorias[categoria] = this.denuncias.filter(d => d.categoria === categoria).length;
+      stats.categorias[categoria] = denuncias.filter(d => d.categoria === categoria).length;
     });
-
     return stats;
   }
 
-  // Método para buscar denuncias
-  buscarDenuncias(termino) {
+  async buscarDenuncias(termino) {
+    const denuncias = await this.getAllDenuncias();
     const terminoLower = termino.toLowerCase();
-    return this.denuncias.filter(denuncia => 
-      denuncia.titulo.toLowerCase().includes(terminoLower) ||
-      denuncia.descripcion.toLowerCase().includes(terminoLower)
-    );
+    return denuncias.filter(d => d.titulo.toLowerCase().includes(terminoLower) || d.descripcion.toLowerCase().includes(terminoLower));
   }
 
-  // Método para obtener denuncias recientes
-  getDenunciasRecientes(limite = 5) {
-    return this.denuncias
-      .sort((a, b) => new Date(b.fechaCreacion) - new Date(a.fechaCreacion))
-      .slice(0, limite);
+  async getDenunciasRecientes(limiteN = 5) {
+    const denunciasCol = collection(db, 'denuncias');
+    const q = query(denunciasCol, orderBy('fechaCreacion', 'desc'), limit(limiteN));
+    const snapshot = await getDocs(q);
+    return snapshot.docs.map(doc => ({ id: doc.id, ...this._convertTimestamps(doc.data()) }));
   }
 
-  // Método para obtener denuncias populares
-  getDenunciasPopulares(limite = 5) {
-    return this.denuncias
-      .sort((a, b) => b.likes - a.likes)
-      .slice(0, limite);
+  async getDenunciasPopulares(limiteN = 5) {
+    const denunciasCol = collection(db, 'denuncias');
+    const q = query(denunciasCol, orderBy('likes', 'desc'), limit(limiteN));
+    const snapshot = await getDocs(q);
+    return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
   }
 
-  // Método para obtener denuncias del usuario actual
-  getMisDenuncias() {
-    if (!authController.isUserAuthenticated()) {
-      return [];
+  async getMisDenuncias() {
+    const user = auth.currentUser;
+    if (!user) return [];
+    const denunciasCol = collection(db, 'denuncias');
+    const q = query(denunciasCol, where('usuarioId', '==', user.uid));
+    const snapshot = await getDocs(q);
+    return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+  }
+
+  async getDenunciasConMisLikes() {
+    const user = auth.currentUser;
+    if (!user) return [];
+    const denunciasCol = collection(db, 'denuncias');
+    const snapshot = await getDocs(denunciasCol);
+    return snapshot.docs.map(doc => ({ id: doc.id, ...this._convertTimestamps(doc.data()) })).filter(d => Array.isArray(d.usuariosQueDieronLike) && d.usuariosQueDieronLike.includes(user.uid));
+  }
+
+  async hasUserLikedDenuncia(denunciaId) {
+    const user = auth.currentUser;
+    if (!user) return false;
+    const docRef = doc(db, 'denuncias', denunciaId);
+    const docSnap = await getDoc(docRef);
+    if (!docSnap.exists()) return false;
+    const data = docSnap.data();
+    return Array.isArray(data.usuariosQueDieronLike) && data.usuariosQueDieronLike.includes(user.uid);
+  }
+
+  addListener(listener) { this.listeners.push(listener); }
+  removeListener(listener) { this.listeners = this.listeners.filter(l => l !== listener); }
+  notifyListeners() { this.listeners.forEach(l => l({})); }
+
+  _convertTimestamps(data) {
+    const out = { ...data };
+    if (out.fechaCreacion && typeof out.fechaCreacion.toDate === 'function') {
+      out.fechaCreacion = out.fechaCreacion.toDate();
     }
-    
-    const currentUser = authController.getCurrentUser();
-    return this.denuncias.filter(denuncia => 
-      currentUser.denunciasCreadas.includes(denuncia.id)
-    );
-  }
-
-  // Método para obtener denuncias con mis likes
-  getDenunciasConMisLikes() {
-    if (!authController.isUserAuthenticated()) {
-      return [];
-    }
-    
-    const currentUser = authController.getCurrentUser();
-    return this.denuncias.filter(denuncia => 
-      currentUser.denunciasLikadas.includes(denuncia.id)
-    );
-  }
-
-  // Método para verificar si el usuario ha dado like a una denuncia
-  hasUserLikedDenuncia(denunciaId) {
-    if (!authController.isUserAuthenticated()) {
-      return false;
-    }
-    
-    const currentUser = authController.getCurrentUser();
-    return currentUser.hasLikedDenuncia(denunciaId);
-  }
-
-  // Método para generar ID único
-  generateId() {
-    return 'den_' + Math.random().toString(36).substr(2, 9);
-  }
-
-  // Método para agregar listener de cambios
-  addListener(listener) {
-    this.listeners.push(listener);
-  }
-
-  // Método para remover listener
-  removeListener(listener) {
-    this.listeners = this.listeners.filter(l => l !== listener);
-  }
-
-  // Método para notificar listeners
-  notifyListeners() {
-    this.listeners.forEach(listener => {
-      listener({
-        denuncias: this.denuncias,
-        comentarios: this.comentarios
-      });
-    });
-  }
-
-  // Método para obtener denuncias por zona (futuro)
-  getDenunciasByZona(zona) {
-    // Implementar cuando se agregue geolocalización
-    return this.denuncias;
-  }
-
-  // Método para reportar denuncia (futuro)
-  reportarDenuncia(denunciaId, motivo) {
-    // Implementar sistema de reportes
-    return {
-      success: true,
-      message: 'Denuncia reportada exitosamente'
-    };
+    return out;
   }
 }
 
-// Crear instancia única del controlador (Singleton)
 const denunciaController = new DenunciaController();
-
-export default denunciaController; 
+export default denunciaController;
