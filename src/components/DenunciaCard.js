@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Card, Badge, Button, Row, Col } from 'react-bootstrap';
 import { Link } from 'react-router-dom';
 import { truncarTexto } from '../utils/generalUtils.js';
@@ -8,10 +8,17 @@ import authController from '../controllers/AuthController.js';
 
 const DenunciaCard = ({ denuncia, showFullDescription = false, onUpdate }) => {
   const [likes, setLikes] = useState(denuncia.likes);
-  const [liked, setLiked] = useState(
-    denunciaController.hasUserLikedDenuncia(denuncia.id)
-  );
+  const [liked, setLiked] = useState(false);
   const [isLiking, setIsLiking] = useState(false);
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      const hasLiked = await denunciaController.hasUserLikedDenuncia(denuncia.id);
+      if (!cancelled) setLiked(hasLiked);
+    })();
+    return () => { cancelled = true; };
+  }, [denuncia.id]);
 
   const handleLike = async (e) => {
     e.preventDefault();
@@ -26,7 +33,7 @@ const DenunciaCard = ({ denuncia, showFullDescription = false, onUpdate }) => {
     
     setIsLiking(true);
     
-    const result = denunciaController.toggleLikeDenuncia(denuncia.id);
+    const result = await denunciaController.toggleLikeDenuncia(denuncia.id);
     
     if (result.success) {
       setLikes(result.likes);
@@ -100,7 +107,7 @@ const DenunciaCard = ({ denuncia, showFullDescription = false, onUpdate }) => {
           </Col>
           <Col xs="auto">
             <i className="bi bi-chat me-1"></i>
-            {denuncia.comentarios.length} comentario{denuncia.comentarios.length !== 1 ? 's' : ''}
+            {(denuncia.comentarios?.length || 0)} comentario{(denuncia.comentarios?.length || 0) !== 1 ? 's' : ''}
           </Col>
         </Row>
       </Card.Body>

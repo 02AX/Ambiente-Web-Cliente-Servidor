@@ -13,10 +13,16 @@ const Ranking = () => {
     cargarDatos();
   }, [criterioOrden]);
 
-  const cargarDatos = () => {
-    const denunciasOrdenadas = denunciaController.getDenunciasOrdenadas(criterioOrden);
-    setDenuncias(denunciasOrdenadas);
-    setEstadisticas(denunciaController.getEstadisticas());
+  const cargarDatos = async () => {
+    try {
+      const denunciasOrdenadas = await denunciaController.getDenunciasOrdenadas(criterioOrden);
+      setDenuncias(denunciasOrdenadas);
+      const stats = await denunciaController.getEstadisticas();
+      setEstadisticas(stats);
+    } catch (e) {
+      setDenuncias([]);
+      setEstadisticas({});
+    }
   };
 
   const handleCriterioChange = (nuevoCriterio) => {

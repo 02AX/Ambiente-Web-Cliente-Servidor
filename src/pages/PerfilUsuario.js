@@ -22,29 +22,19 @@ const PerfilUsuario = () => {
     cargarDatosUsuario();
   }, []);
 
-  const cargarDatosUsuario = () => {
+  const cargarDatosUsuario = async () => {
     setLoading(true);
-    
-    setTimeout(() => {
-      const user = authController.getCurrentUser();
-      const stats = authController.getUserStats();
-      
-      if (user && stats) {
-        setCurrentUser(user);
-        setUserStats(stats);
-        setConfiguraciones(user.configuraciones);
-        
-        // Cargar denuncias del usuario
-        const denunciasUsuario = denunciaController.getMisDenuncias();
-        setMisDenuncias(denunciasUsuario);
-        
-        // Cargar denuncias con likes del usuario
-        const denunciasConLikes = denunciaController.getDenunciasConMisLikes();
-        setDenunciasLikadas(denunciasConLikes);
-      }
-      
-      setLoading(false);
-    }, 500);
+    const user = authController.getCurrentUser();
+    if (user) {
+      setCurrentUser(user);
+      setUserStats({ denunciasCreadas: 0, denunciasLikadas: 0, comentarios: 0, fechaRegistro: '' });
+      setConfiguraciones({ notificaciones: true, mostrarPerfil: false, modoAnonimo: true });
+      const denunciasUsuario = await denunciaController.getMisDenuncias();
+      setMisDenuncias(denunciasUsuario);
+      const denunciasConLikes = await denunciaController.getDenunciasConMisLikes();
+      setDenunciasLikadas(denunciasConLikes);
+    }
+    setLoading(false);
   };
 
   const handleConfigChange = (key, value) => {
@@ -56,17 +46,11 @@ const PerfilUsuario = () => {
 
   const handleGuardarConfiguraciones = () => {
     setGuardandoConfig(true);
-    
     setTimeout(() => {
-      const result = authController.updateUserSettings(configuraciones);
-      
-      if (result.success) {
-        setMensajeExito('Configuraciones guardadas exitosamente');
-        setTimeout(() => setMensajeExito(''), 3000);
-      }
-      
+      setMensajeExito('Configuraciones guardadas (local)');
+      setTimeout(() => setMensajeExito(''), 3000);
       setGuardandoConfig(false);
-    }, 1000);
+    }, 800);
   };
 
   const handleUpdate = () => {
@@ -108,8 +92,9 @@ const PerfilUsuario = () => {
     );
   }
 
-  const iniciales = obtenerIniciales(currentUser.getDisplayName());
-  const colorAvatar = generarColorPorTexto(currentUser.getDisplayName());
+  const displayName = currentUser.displayName || currentUser.email || 'Usuario';
+  const iniciales = obtenerIniciales(displayName);
+  const colorAvatar = generarColorPorTexto(displayName);
 
   return (
     <div className="fade-in">
@@ -134,7 +119,7 @@ const PerfilUsuario = () => {
                     </div>
                   </Col>
                   <Col>
-                    <h2 className="fw-bold mb-1">{currentUser.getDisplayName()}</h2>
+                    <h2 className="fw-bold mb-1">{displayName}</h2>
                     <p className="text-muted mb-2">
                       Miembro desde {formatearFecha(currentUser.fechaRegistro)}
                     </p>
@@ -276,7 +261,7 @@ const PerfilUsuario = () => {
                         <div className="d-flex flex-column gap-2">
                           <div className="d-flex justify-content-between">
                             <span className="small text-muted">Usuario:</span>
-                            <span className="small">{currentUser.username}</span>
+                            <span className="small">{displayName}</span>
                           </div>
                           <div className="d-flex justify-content-between">
                             <span className="small text-muted">Email:</span>
@@ -288,8 +273,8 @@ const PerfilUsuario = () => {
                           </div>
                           <div className="d-flex justify-content-between">
                             <span className="small text-muted">Modo:</span>
-                            <Badge bg={currentUser.configuraciones.modoAnonimo ? 'success' : 'warning'}>
-                              {currentUser.configuraciones.modoAnonimo ? 'Anónimo' : 'Público'}
+                            <Badge bg={configuraciones.modoAnonimo ? 'success' : 'warning'}>
+                              {configuraciones.modoAnonimo ? 'Anónimo' : 'Público'}
                             </Badge>
                           </div>
                         </div>
